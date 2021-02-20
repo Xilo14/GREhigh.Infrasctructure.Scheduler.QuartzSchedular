@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.Threading.Tasks;
+using GREhigh.DomainBase;
 using GREhigh.DomainBase.Interfaces;
 using GREhigh.Infrastructure.Interfaces;
 using GREhigh.InfrastructureBase.Interfaces;
@@ -11,6 +13,7 @@ using Quartz.Impl;
 namespace GREhigh.Infrastructure.QuartzScheduler {
     public class QuartzScheduler : Interfaces.IScheduler {
         internal ConcurrentDictionary<string, object> roomIdsDict = new();
+        internal ConcurrentDictionary<string, Type> roomTypesDict = new();
         private Quartz.IScheduler _schedular;
         private UpdateRoomProducer _updateRoomProducer;
         private Quartz.IScheduler Scheduler {
@@ -34,9 +37,10 @@ namespace GREhigh.Infrastructure.QuartzScheduler {
             if (jobId is TriggerKey key)
                 Scheduler.UnscheduleJob(key);
         }
-        public object AddJobCancellation(TimeSpan timeout, object roomId) {
+        public object AddJobCancellation(TimeSpan timeout, object roomId, Type roomType) {
             var guid = Guid.NewGuid();
             roomIdsDict.TryAdd(guid.ToString(), roomId);
+            roomTypesDict.TryAdd(guid.ToString(), roomType);
 
             var job = JobBuilder.Create<CancellationJob>()
                 .WithIdentity(guid.ToString(), "CancellationJob")
@@ -51,9 +55,10 @@ namespace GREhigh.Infrastructure.QuartzScheduler {
             Scheduler.ScheduleJob(job, trigger);
             return trigger.Key;
         }
-        public object AddJobFinishPreparing(TimeSpan timeout, object roomId) {
+        public object AddJobFinishPreparing(TimeSpan timeout, object roomId, Type roomType) {
             var guid = Guid.NewGuid();
             roomIdsDict.TryAdd(guid.ToString(), roomId);
+            roomTypesDict.TryAdd(guid.ToString(), roomType);
 
             var job = JobBuilder.Create<FinishPreparingJob>()
                 .WithIdentity(guid.ToString(), "FinishPreparingJob")
@@ -68,9 +73,10 @@ namespace GREhigh.Infrastructure.QuartzScheduler {
             Scheduler.ScheduleJob(job, trigger);
             return trigger.Key;
         }
-        public object AddJobTick(TimeSpan timeout, object roomId) {
+        public object AddJobTick(TimeSpan timeout, object roomId, Type roomType) {
             var guid = Guid.NewGuid();
             roomIdsDict.TryAdd(guid.ToString(), roomId);
+            roomTypesDict.TryAdd(guid.ToString(), roomType);
 
             var job = JobBuilder.Create<TickJob>()
                 .WithIdentity(guid.ToString(), "TickJob")
@@ -96,7 +102,8 @@ namespace GREhigh.Infrastructure.QuartzScheduler {
                 var dataMap = context.JobDetail.JobDataMap;
                 var guid = dataMap.GetString("guid");
                 Instance.roomIdsDict.TryGetValue(guid, out var roomId);
-                Instance._updateRoomProducer.ProduceFinishPreparing(roomId);
+                Instance.roomTypesDict.TryGetValue(guid, out var roomType);
+                Instance._updateRoomProducer.ProduceFinishPreparing(roomId, roomType);
             }
         }
         private class TickJob : IJob {
@@ -104,7 +111,8 @@ namespace GREhigh.Infrastructure.QuartzScheduler {
                 var dataMap = context.JobDetail.JobDataMap;
                 var guid = dataMap.GetString("guid");
                 Instance.roomIdsDict.TryGetValue(guid, out var roomId);
-                Instance._updateRoomProducer.ProduceTick(roomId);
+                Instance.roomTypesDict.TryGetValue(guid, out var roomType);
+                Instance._updateRoomProducer.ProduceTick(roomId, roomType);
             }
         }
         private class CancellationJob : IJob {
@@ -112,7 +120,8 @@ namespace GREhigh.Infrastructure.QuartzScheduler {
                 var dataMap = context.JobDetail.JobDataMap;
                 var guid = dataMap.GetString("guid");
                 Instance.roomIdsDict.TryGetValue(guid, out var roomId);
-                Instance._updateRoomProducer.ProduceCancellation(roomId);
+                Instance.roomTypesDict.TryGetValue(guid, out var roomType);
+                Instance._updateRoomProducer.ProduceCancellation(roomId, roomType);
             }
         }
     }
