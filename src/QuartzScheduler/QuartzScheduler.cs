@@ -12,7 +12,7 @@ using Quartz.Impl;
 
 namespace GREhigh.Infrastructure.QuartzScheduler {
     public class QuartzScheduler : Interfaces.IScheduler {
-        internal ConcurrentDictionary<string, object> roomIdsDict = new();
+        internal ConcurrentDictionary<string, ulong> roomIdsDict = new();
         internal ConcurrentDictionary<string, Type> roomTypesDict = new();
         private Quartz.IScheduler _schedular;
         private UpdateRoomProducer _updateRoomProducer;
@@ -37,7 +37,7 @@ namespace GREhigh.Infrastructure.QuartzScheduler {
             if (jobId is TriggerKey key)
                 Scheduler.UnscheduleJob(key);
         }
-        public object AddJobCancellation(TimeSpan timeout, object roomId, Type roomType) {
+        public object AddJobCancellation(TimeSpan timeout, ulong roomId, Type roomType) {
             var guid = Guid.NewGuid();
             roomIdsDict.TryAdd(guid.ToString(), roomId);
             roomTypesDict.TryAdd(guid.ToString(), roomType);
@@ -55,7 +55,7 @@ namespace GREhigh.Infrastructure.QuartzScheduler {
             Scheduler.ScheduleJob(job, trigger);
             return trigger.Key;
         }
-        public object AddJobFinishPreparing(TimeSpan timeout, object roomId, Type roomType) {
+        public object AddJobFinishPreparing(TimeSpan timeout, ulong roomId, Type roomType) {
             var guid = Guid.NewGuid();
             roomIdsDict.TryAdd(guid.ToString(), roomId);
             roomTypesDict.TryAdd(guid.ToString(), roomType);
@@ -73,7 +73,7 @@ namespace GREhigh.Infrastructure.QuartzScheduler {
             Scheduler.ScheduleJob(job, trigger);
             return trigger.Key;
         }
-        public object AddJobTick(TimeSpan timeout, object roomId, Type roomType) {
+        public object AddJobTick(TimeSpan timeout, ulong roomId, Type roomType) {
             var guid = Guid.NewGuid();
             roomIdsDict.TryAdd(guid.ToString(), roomId);
             roomTypesDict.TryAdd(guid.ToString(), roomType);
